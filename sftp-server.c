@@ -63,6 +63,9 @@ LogLevel log_level = SYSLOG_LEVEL_ERROR;
 struct passwd *pw = NULL;
 char *client_addr = NULL;
 
+/* Local root directory (-d option) */
+char *rootdir = NULL;
+
 /* input and output queue */
 Buffer iqueue;
 Buffer oqueue;
@@ -167,6 +170,23 @@ static Attrib *
 get_attrib(void)
 {
 	return decode_attrib(&iqueue);
+}
+
+char *
+get_filename(void)
+{
+        char *name, *name_from_client;
+
+        name_from_client = get_string(NULL);
+        if(rootdir) {
+                name = xmalloc(strlen(rootdir) + strlen(name_from_client) + 1);
+                sprintf(name, "%s%s", rootdir, name_from_client);
+                debug("converting name \"%s\" to \"%s\"", name_from_client, name);
+        } else {
+                name = xstrdup(name_from_client);
+        }
+        xfree(name_from_client);
+        return name;
 }
 
 /* handle handles */
@@ -545,7 +565,7 @@ process_open(void)
 	int handle, fd, flags, mode, status = SSH2_FX_FAILURE;
 
 	id = get_int();
-	name = get_string(NULL);
+        name = get_filename();
 	pflags = get_int();		/* portable flags */
 	debug3("request %u: open flags %d", id, pflags);
 	a = get_attrib();
@@ -675,7 +695,7 @@ process_do_stat(int do_lstat)
 	int ret, status = SSH2_FX_FAILURE;
 
 	id = get_int();
-	name = get_string(NULL);
+	name = get_filename();
 	debug3("request %u: %sstat", id, do_lstat ? "l" : "");
 	verbose("%sstat name \"%s\"", do_lstat ? "l" : "", name);
 	ret = do_lstat ? lstat(name, &st) : stat(name, &st);
@@ -751,7 +771,7 @@ process_setstat(void)
 	int status = SSH2_FX_OK, ret;
 
 	id = get_int();
-	name = get_string(NULL);
+	name = get_filename();
 	a = get_attrib();
 	debug("request %u: setstat name \"%s\"", id, name);
 	if (a->flags & SSH2_FILEXFER_ATTR_SIZE) {
@@ -949,7 +969,7 @@ process_remove(void)
 	int ret;
 
 	id = get_int();
-	name = get_string(NULL);
+	name = get_filename();
 	debug3("request %u: remove", id);
 	logit("remove name \"%s\"", name);
 	ret = unlink(name);
@@ -967,7 +987,7 @@ process_mkdir(void)
 	int ret, mode, status = SSH2_FX_FAILURE;
 
 	id = get_int();
-	name = get_string(NULL);
+	name = get_filename();
 	a = get_attrib();
 	mode = (a->flags & SSH2_FILEXFER_ATTR_PERMISSIONS) ?
 	    a->perm & 07777 : 0777;
@@ -987,7 +1007,7 @@ process_rmdir(void)
 	int ret, status;
 
 	id = get_int();
-	name = get_string(NULL);
+	name = get_filename();
 	debug3("request %u: rmdir", id);
 	logit("rmdir name \"%s\"", name);
 	ret = rmdir(name);
@@ -1004,7 +1024,7 @@ process_realpath(void)
 	char *path;
 
 	id = get_int();
-	path = get_string(NULL);
+	path = get_filename();
 	if (path[0] == '\0') {
 		xfree(path);
 		path = xstrdup(".");
@@ -1013,11 +1033,17 @@ process_realpath(void)
 	verbose("realpath \"%s\"", path);
 	if (realpath(path, resolvedname) == NULL) {
 		send_status(id, errno_to_portable(errno));
+        } else if (rootdir && strncmp(rootdir, resolvedname, strlen(rootdir))) {
+		send_status(id, errno_to_portable(EACCES));
 	} else {
 		Stat s;
 		attrib_clear(&s.attrib);
-		s.name = s.long_name = resolvedname;
-		send_names(id, 1, &s);
+                if (rootdir) {
+                        s.name = s.long_name = resolvedname + strlen(rootdir);
+                        debug3("realpath resolved to \"%s\"", resolvedname + strlen(rootdir));
+                } else
+                        s.name = s.long_name = resolvedname;
+                send_names(id, 1, &s);
 	}
 	xfree(path);
 }
@@ -1031,8 +1057,8 @@ process_rename(void)
 	struct stat sb;
 
 	id = get_int();
-	oldpath = get_string(NULL);
-	newpath = get_string(NULL);
+	oldpath = get_filename();
+	newpath = get_filename();
 	debug3("request %u: rename", id);
 	logit("rename old \"%s\" new \"%s\"", oldpath, newpath);
 	status = SSH2_FX_FAILURE;
@@ -1091,17 +1117,23 @@ process_readlink(void)
 	char *path;
 
 	id = get_int();
-	path = get_string(NULL);
+	path = get_filename();
 	debug3("request %u: readlink", id);
 	verbose("readlink \"%s\"", path);
-	if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1)
+	if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1) {
 		send_status(id, errno_to_portable(errno));
-	else {
+        } else if (rootdir && strncmp(rootdir, buf, strlen(rootdir))) {
+		send_status(id, errno_to_portable(EACCES));
+	} else {
 		Stat s;
 
 		buf[len] = '\0';
 		attrib_clear(&s.attrib);
-		s.name = s.long_name = buf;
+                if (rootdir) {
+                        s.name = s.long_name = buf + strlen(rootdir);
+                        debug3("readlink resolved to \"%s\"", buf + strlen(rootdir));
+                } else
+                        s.name = s.long_name = buf;
 		send_names(id, 1, &s);
 	}
 	xfree(path);
@@ -1115,8 +1147,8 @@ process_symlink(void)
 	int ret, status;
 
 	id = get_int();
-	oldpath = get_string(NULL);
-	newpath = get_string(NULL);
+	oldpath = get_filename();
+	newpath = get_filename();
 	debug3("request %u: symlink", id);
 	logit("symlink old \"%s\" new \"%s\"", oldpath, newpath);
 	/* this will fail if 'newpath' exists */
@@ -1132,8 +1164,8 @@ process_extended_posix_rename(u_int32_t id)
 {
 	char *oldpath, *newpath;
 
-	oldpath = get_string(NULL);
-	newpath = get_string(NULL);
+	oldpath = get_filename();
+	newpath = get_filename();
 	debug3("request %u: posix-rename", id);
 	logit("posix-rename old \"%s\" new \"%s\"", oldpath, newpath);
 	if (rename(oldpath, newpath) == -1)
@@ -1150,7 +1182,7 @@ process_extended_statvfs(u_int32_t id)
 	char *path;
 	struct statvfs st;
 
-	path = get_string(NULL);
+	path = get_filename();
 	debug3("request %u: statfs", id);
 	logit("statfs \"%s\"", path);
 
@@ -1341,7 +1373,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 	__progname = ssh_get_progname(argv[0]);
 	log_init(__progname, log_level, log_facility, log_stderr);
 
-	while (!skipargs && (ch = getopt(argc, argv, "C:f:l:che")) != -1) {
+	while (!skipargs && (ch = getopt(argc, argv, "C:f:l:d:che")) != -1) {
 		switch (ch) {
 		case 'c':
 			/*
@@ -1358,6 +1390,10 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 			if (log_level == SYSLOG_LEVEL_NOT_SET)
 				error("Invalid log level \"%s\"", optarg);
 			break;
+                case 'd':
+                        rootdir = xmalloc(strlen(optarg+1));
+                        strcpy(rootdir, optarg);
+                        break;
 		case 'f':
 			log_facility = log_facility_number(optarg);
 			if (log_facility == SYSLOG_FACILITY_NOT_SET)
@@ -1386,6 +1422,8 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 
 	logit("session opened for local user %s from [%s]",
 	    pw->pw_name, client_addr);
+        if (rootdir)
+                logit("rootdir set to \"%s\"", rootdir);
 
 	in = dup(STDIN_FILENO);
 	out = dup(STDOUT_FILENO);
