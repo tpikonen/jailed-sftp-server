@@ -199,7 +199,7 @@ fakepath(const char *rootp, const char *path, char resolved[PATH_MAX])
             return (NULL);
         }
         if (strncmp(rootp, resolved, rootp_len)) {
-            error("cwd outside of rootdir");
+            error("cwd \"%s\" outside of rootdir", resolved);
             sftp_server_cleanup_exit(666);
             return (NULL);
         }
