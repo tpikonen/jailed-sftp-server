@@ -1566,8 +1566,15 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 				error("Invalid log level \"%s\"", optarg);
 			break;
                 case 'd':
-                        rootdir = xmalloc(strlen(optarg+1));
-                        strcpy(rootdir, optarg);
+                        rootdir = xmalloc(PATH_MAX);
+                        if (!realpath(optarg, rootdir)) {
+                                error("Invalid rootdir \"%s\"", optarg);
+			        sftp_server_usage();
+                        }
+                        if (chdir(rootdir)) {
+                                error("Could not chdir to rootdir");
+			        sftp_server_usage();
+                        }
                         break;
 		case 'f':
 			log_facility = log_facility_number(optarg);
