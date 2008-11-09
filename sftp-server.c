@@ -352,8 +352,10 @@ get_filename(void)
         name_from_client = get_string(NULL);
         if(rootdir) {
                 name = xmalloc(PATH_MAX);
-                if (!fakepath(rootdir, name_from_client, name))
+                if (!fakepath(rootdir, name_from_client, name)) {
+                        debug3("fakepath failed, got \"%s\"", name);
                         name[0] = '\0';
+                }
                 debug("converting name \"%s\" to \"%s\"", name_from_client, name);
         } else {
                 name = xstrdup(name_from_client);
