@@ -1295,20 +1295,14 @@ process_readlink(void)
 	path = get_filename();
 	debug3("request %u: readlink", id);
 	verbose("readlink \"%s\"", path);
-	if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1) {
+	if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1)
 		send_status(id, errno_to_portable(errno));
-        } else if (rootdir && strncmp(rootdir, buf, strlen(rootdir))) {
-		send_status(id, errno_to_portable(EACCES));
-	} else {
+	else {
 		Stat s;
 
 		buf[len] = '\0';
 		attrib_clear(&s.attrib);
-                if (rootdir) {
-                        s.name = s.long_name = buf + strlen(rootdir);
-                        debug3("readlink resolved to \"%s\"", buf + strlen(rootdir));
-                } else
-                        s.name = s.long_name = buf;
+                s.name = s.long_name = buf;
 		send_names(id, 1, &s);
 	}
 	xfree(path);
