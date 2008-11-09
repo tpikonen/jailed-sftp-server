@@ -251,7 +251,7 @@ fakepath(const char *rootp, const char *path, char resolved[PATH_MAX])
                 resolved[resolved_len - 1] = '\0';
                 q = strrchr(resolved, '/') + 1;
                 *q = '\0';
-                if (!strncmp(rootp, resolved, rootp_len)) {
+                if (strncmp(rootp, resolved, rootp_len)) {
                     memcpy(resolved, rootp, rootp_len + 1);
                     resolved_len = rootp_len;
                 } else {
@@ -323,7 +323,7 @@ fakepath(const char *rootp, const char *path, char resolved[PATH_MAX])
     }
 
     /* If outside rootp, fail */
-    if (!strncmp(rootp, resolved, rootp_len)) {
+    if (strncmp(rootp, resolved, rootp_len)) {
         return (NULL);
     }
 
