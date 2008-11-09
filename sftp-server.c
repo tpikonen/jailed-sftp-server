@@ -1194,10 +1194,14 @@ process_rmdir(void)
 static void
 process_realpath(void)
 {
-	char resolvedname[MAXPATHLEN];
+	char resolvbuf[MAXPATHLEN];
+        char *resolvedname;
 	u_int32_t id;
 	char *path;
+        size_t rootdir_len;
 
+        resolvedname = resolvbuf;
+        rootdir_len = strlen(rootdir);
 	id = get_int();
 	path = get_filename();
 	if (path[0] == '\0') {
@@ -1208,16 +1212,21 @@ process_realpath(void)
 	verbose("realpath \"%s\"", path);
 	if (realpath(path, resolvedname) == NULL) {
 		send_status(id, errno_to_portable(errno));
-        } else if (rootdir && strncmp(rootdir, resolvedname, strlen(rootdir))) {
+        } else if (rootdir && strncmp(rootdir, resolvedname, rootdir_len)) {
 		send_status(id, errno_to_portable(EACCES));
 	} else {
 		Stat s;
 		attrib_clear(&s.attrib);
                 if (rootdir) {
-                        s.name = s.long_name = resolvedname + strlen(rootdir);
-                        debug3("realpath resolved to \"%s\"", resolvedname + strlen(rootdir));
-                } else
-                        s.name = s.long_name = resolvedname;
+                        if (strlen(resolvedname) == rootdir_len) {
+                                resolvedname[0] = '/';
+                                resolvedname[1] = '\0';
+                        } else {
+                                resolvedname += strlen(rootdir);
+                        }
+                        debug3("realpath resolved to \"%s\"", resolvedname);
+                }
+                s.name = s.long_name = resolvedname;
                 send_names(id, 1, &s);
 	}
 	xfree(path);
