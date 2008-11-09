@@ -1058,7 +1058,7 @@ process_opendir(void)
 	u_int32_t id;
 
 	id = get_int();
-	path = get_string(NULL);
+	path = get_filename();
 	debug3("request %u: opendir", id);
 	logit("opendir \"%s\"", path);
 	dirp = opendir(path);
@@ -1322,7 +1322,7 @@ process_symlink(void)
 	int ret, status;
 
 	id = get_int();
-	oldpath = get_filename();
+	oldpath = get_string(NULL);
 	newpath = get_filename();
 	debug3("request %u: symlink", id);
 	logit("symlink old \"%s\" new \"%s\"", oldpath, newpath);
