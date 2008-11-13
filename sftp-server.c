@@ -170,10 +170,12 @@ string_from_portable(int pflags)
  * char *fakepath(const char *rootp, const char *path, char resolved[PATH_MAX]);
  *
  * Find the real name of path, by removing all ".", ".." and symlink
- * components.  Uses rootp as the fake root of the directory hierarchy,
- * if path does not resolve to a subpath of rootp, the call fails.
+ * components.  Uses rootp as the fake root of the directory hierarchy.
+ * If path does not resolve to a subpath of rootp, the call fails.
  * Returns (resolved) on success, or (NULL) on failure,
  * in which case the path which caused trouble is left in (resolved).
+ *
+ * Modified from OpenBSD realpath.c.
  */
 char *
 fakepath(const char *rootp, const char *path, char resolved[PATH_MAX])
