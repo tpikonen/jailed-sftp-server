@@ -178,163 +178,163 @@ string_from_portable(int pflags)
 char *
 fakepath(const char *rootp, const char *path, char resolved[PATH_MAX])
 {
-    struct stat sb;
-    char *p, *q, *s;
-    size_t left_len, resolved_len, rootp_len;
-    unsigned symlinks;
-    int serrno, slen;
-    char left[PATH_MAX], next_token[PATH_MAX], symlink[PATH_MAX];
+	struct stat sb;
+	char *p, *q, *s;
+	size_t left_len, resolved_len, rootp_len;
+	unsigned symlinks;
+	int serrno, slen;
+	char left[PATH_MAX], next_token[PATH_MAX], symlink[PATH_MAX];
 
-    serrno = errno;
-    symlinks = 0;
-    rootp_len = strlen(rootp);
-    if (path[0] == '/') {
-        resolved_len = strlcpy(resolved, rootp, PATH_MAX);
-        if (path[1] == '\0')
-            return (resolved);
-        left_len = strlcpy(left, path + 1, sizeof(left));
-    } else {
-        if (getcwd(resolved, PATH_MAX) == NULL) {
-            strlcpy(resolved, ".", PATH_MAX);
-            return (NULL);
-        }
-        if (strncmp(rootp, resolved, rootp_len)) {
-            error("cwd \"%s\" outside of rootdir", resolved);
-            sftp_server_cleanup_exit(666);
-            return (NULL);
-        }
-        resolved_len = strlen(resolved);
-        left_len = strlcpy(left, path, sizeof(left));
-    }
-    if (left_len >= sizeof(left) || resolved_len >= PATH_MAX) {
-        errno = ENAMETOOLONG;
-        return (NULL);
-    }
+	serrno = errno;
+	symlinks = 0;
+	rootp_len = strlen(rootp);
+	if (path[0] == '/') {
+		resolved_len = strlcpy(resolved, rootp, PATH_MAX);
+		if (path[1] == '\0')
+			return (resolved);
+		left_len = strlcpy(left, path + 1, sizeof(left));
+	} else {
+		if (getcwd(resolved, PATH_MAX) == NULL) {
+			strlcpy(resolved, ".", PATH_MAX);
+			return (NULL);
+		}
+		if (strncmp(rootp, resolved, rootp_len)) {
+			error("cwd \"%s\" outside of rootdir", resolved);
+			sftp_server_cleanup_exit(666);
+			return (NULL);
+		}
+		resolved_len = strlen(resolved);
+		left_len = strlcpy(left, path, sizeof(left));
+	}
+	if (left_len >= sizeof(left) || resolved_len >= PATH_MAX) {
+		errno = ENAMETOOLONG;
+		return (NULL);
+	}
 
-    /*
-     * Iterate over path components in `left'.
-     */
-    while (left_len != 0) {
-        /*
-         * Extract the next path component and adjust `left'
-         * and its length.
-         */
-        p = strchr(left, '/');
-        s = p ? p : left + left_len;
-        if (s - left >= sizeof(next_token)) {
-            errno = ENAMETOOLONG;
-            return (NULL);
-        }
-        memcpy(next_token, left, s - left);
-        next_token[s - left] = '\0';
-        left_len -= s - left;
-        if (p != NULL)
-            memmove(left, s + 1, left_len + 1);
-        if (resolved[resolved_len - 1] != '/') {
-            if (resolved_len + 1 >= PATH_MAX) {
-                errno = ENAMETOOLONG;
-                return (NULL);
-            }
-            resolved[resolved_len++] = '/';
-            resolved[resolved_len] = '\0';
-        }
-        if (next_token[0] == '\0')
-            continue;
-        else if (strcmp(next_token, ".") == 0)
-            continue;
-        else if (strcmp(next_token, "..") == 0) {
-            /*
-             * Strip the last path component except when it would
-             * lead outside of rootp
-             */
-            if (resolved_len > 1) {
-                resolved[resolved_len - 1] = '\0';
-                q = strrchr(resolved, '/') + 1;
-                *q = '\0';
-                if (strncmp(rootp, resolved, rootp_len)) {
-                    memcpy(resolved, rootp, rootp_len + 1);
-                    resolved_len = rootp_len;
-                } else {
-                    resolved_len = q - resolved;
-                }
-            }
-            continue;
-        }
+	/*
+	 * Iterate over path components in `left'.
+	 */
+	while (left_len != 0) {
+		/*
+		 * Extract the next path component and adjust `left'
+		 * and its length.
+		 */
+		p = strchr(left, '/');
+		s = p ? p : left + left_len;
+		if (s - left >= sizeof(next_token)) {
+			errno = ENAMETOOLONG;
+			return (NULL);
+		}
+		memcpy(next_token, left, s - left);
+		next_token[s - left] = '\0';
+		left_len -= s - left;
+		if (p != NULL)
+			memmove(left, s + 1, left_len + 1);
+		if (resolved[resolved_len - 1] != '/') {
+			if (resolved_len + 1 >= PATH_MAX) {
+				errno = ENAMETOOLONG;
+				return (NULL);
+			}
+			resolved[resolved_len++] = '/';
+			resolved[resolved_len] = '\0';
+		}
+		if (next_token[0] == '\0')
+			continue;
+		else if (strcmp(next_token, ".") == 0)
+			continue;
+		else if (strcmp(next_token, "..") == 0) {
+			/*
+			 * Strip the last path component except when it would
+			 * lead outside of rootp
+			 */
+			if (resolved_len > 1) {
+				resolved[resolved_len - 1] = '\0';
+				q = strrchr(resolved, '/') + 1;
+				*q = '\0';
+				if (strncmp(rootp, resolved, rootp_len)) {
+					memcpy(resolved, rootp, rootp_len + 1);
+					resolved_len = rootp_len;
+				} else {
+					resolved_len = q - resolved;
+				}
+			}
+			continue;
+		}
 
-        /*
-         * Append the next path component and lstat() it. If
-         * lstat() fails we still can return successfully if
-         * there are no more path components left.
-         */
-        resolved_len = strlcat(resolved, next_token, PATH_MAX);
-        if (resolved_len >= PATH_MAX) {
-            errno = ENAMETOOLONG;
-            return (NULL);
-        }
-        if (lstat(resolved, &sb) != 0) {
-            if (errno == ENOENT && p == NULL) {
-                errno = serrno;
-                return (resolved);
-            }
-            return (NULL);
-        }
-        if (S_ISLNK(sb.st_mode)) {
-            if (symlinks++ > MAXSYMLINKS) {
-                errno = ELOOP;
-                return (NULL);
-            }
-            slen = readlink(resolved, symlink, sizeof(symlink) - 1);
-            if (slen < 0)
-                return (NULL);
-            symlink[slen] = '\0';
-            if (symlink[0] == '/') {
-                memcpy(resolved, rootp, rootp_len + 1);
-                resolved_len = rootp_len;
-            } else if (resolved_len > 1) {
-                /* Strip the last path component. */
-                resolved[resolved_len - 1] = '\0';
-                q = strrchr(resolved, '/') + 1;
-                *q = '\0';
-                resolved_len = q - resolved;
-            }
+		/*
+		 * Append the next path component and lstat() it. If
+		 * lstat() fails we still can return successfully if
+		 * there are no more path components left.
+		 */
+		resolved_len = strlcat(resolved, next_token, PATH_MAX);
+		if (resolved_len >= PATH_MAX) {
+			errno = ENAMETOOLONG;
+			return (NULL);
+		}
+		if (lstat(resolved, &sb) != 0) {
+			if (errno == ENOENT && p == NULL) {
+				errno = serrno;
+				return (resolved);
+			}
+			return (NULL);
+		}
+		if (S_ISLNK(sb.st_mode)) {
+			if (symlinks++ > MAXSYMLINKS) {
+				errno = ELOOP;
+				return (NULL);
+			}
+			slen = readlink(resolved, symlink, sizeof(symlink) - 1);
+			if (slen < 0)
+				return (NULL);
+			symlink[slen] = '\0';
+			if (symlink[0] == '/') {
+				memcpy(resolved, rootp, rootp_len + 1);
+				resolved_len = rootp_len;
+			} else if (resolved_len > 1) {
+				/* Strip the last path component. */
+				resolved[resolved_len - 1] = '\0';
+				q = strrchr(resolved, '/') + 1;
+				*q = '\0';
+				resolved_len = q - resolved;
+			}
 
-            /*
-             * If there are any path components left, then
-             * append them to symlink. The result is placed
-             * in `left'.
-             */
-            if (p != NULL) {
-                if (symlink[slen - 1] != '/') {
-                    if (slen + 1 >= sizeof(symlink)) {
-                        errno = ENAMETOOLONG;
-                        return (NULL);
-                    }
-                    symlink[slen] = '/';
-                    symlink[slen + 1] = 0;
-                }
-                left_len = strlcat(symlink, left, sizeof(left));
-                if (left_len >= sizeof(left)) {
-                    errno = ENAMETOOLONG;
-                    return (NULL);
-                }
-            }
-            left_len = strlcpy(left, symlink, sizeof(left));
-        }
-    }
+			/*
+			 * If there are any path components left, then
+			 * append them to symlink. The result is placed
+			 * in `left'.
+			 */
+			if (p != NULL) {
+				if (symlink[slen - 1] != '/') {
+					if (slen + 1 >= sizeof(symlink)) {
+						errno = ENAMETOOLONG;
+						return (NULL);
+					}
+					symlink[slen] = '/';
+					symlink[slen + 1] = 0;
+				}
+				left_len = strlcat(symlink, left, sizeof(left));
+				if (left_len >= sizeof(left)) {
+					errno = ENAMETOOLONG;
+					return (NULL);
+				}
+			}
+			left_len = strlcpy(left, symlink, sizeof(left));
+		}
+	}
 
-    /* If outside rootp, fail */
-    if (strncmp(rootp, resolved, rootp_len)) {
-        return (NULL);
-    }
+	/* If outside rootp, fail */
+	if (strncmp(rootp, resolved, rootp_len)) {
+		return (NULL);
+	}
 
-    /*
-     * Remove trailing slash except when the resolved pathname
-     * is a single "/".
-     */
-    if (resolved_len > 1 && resolved[resolved_len - 1] == '/')
-        resolved[resolved_len - 1] = '\0';
+	/*
+	 * Remove trailing slash except when the resolved pathname
+	 * is a single "/".
+	 */
+	if (resolved_len > 1 && resolved[resolved_len - 1] == '/')
+		resolved[resolved_len - 1] = '\0';
 
-    return (resolved);
+	return (resolved);
 }
 
 
@@ -740,7 +740,7 @@ process_open(void)
 	int handle, fd, flags, mode, status = SSH2_FX_FAILURE;
 
 	id = get_int();
-        name = get_filename();
+	name = get_filename();
 	pflags = get_int();		/* portable flags */
 	debug3("request %u: open flags %d", id, pflags);
 	a = get_attrib();
@@ -1195,13 +1195,13 @@ static void
 process_realpath(void)
 {
 	char resolvbuf[MAXPATHLEN];
-        char *resolvedname;
+	char *resolvedname;
 	u_int32_t id;
 	char *path;
-        size_t rootdir_len;
+	size_t rootdir_len;
 
-        resolvedname = resolvbuf;
-        rootdir_len = strlen(rootdir);
+	resolvedname = resolvbuf;
+	rootdir_len = strlen(rootdir);
 	id = get_int();
 	path = get_filename();
 	if (path[0] == '\0') {
@@ -1212,22 +1212,22 @@ process_realpath(void)
 	verbose("realpath \"%s\"", path);
 	if (realpath(path, resolvedname) == NULL) {
 		send_status(id, errno_to_portable(errno));
-        } else if (rootdir && strncmp(rootdir, resolvedname, rootdir_len)) {
+	} else if (rootdir && strncmp(rootdir, resolvedname, rootdir_len)) {
 		send_status(id, errno_to_portable(EACCES));
 	} else {
 		Stat s;
 		attrib_clear(&s.attrib);
-                if (rootdir) {
-                        if (strlen(resolvedname) == rootdir_len) {
-                                resolvedname[0] = '/';
-                                resolvedname[1] = '\0';
-                        } else {
-                                resolvedname += strlen(rootdir);
-                        }
-                        debug3("realpath resolved to \"%s\"", resolvedname);
-                }
-                s.name = s.long_name = resolvedname;
-                send_names(id, 1, &s);
+		if (rootdir) {
+			if (strlen(resolvedname) == rootdir_len) {
+				resolvedname[0] = '/';
+				resolvedname[1] = '\0';
+			} else {
+				resolvedname += strlen(rootdir);
+			}
+			debug3("realpath resolved to \"%s\"", resolvedname);
+		}
+		s.name = s.long_name = resolvedname;
+		send_names(id, 1, &s);
 	}
 	xfree(path);
 }
@@ -1311,7 +1311,7 @@ process_readlink(void)
 
 		buf[len] = '\0';
 		attrib_clear(&s.attrib);
-                s.name = s.long_name = buf;
+		s.name = s.long_name = buf;
 		send_names(id, 1, &s);
 	}
 	xfree(path);
@@ -1568,17 +1568,17 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 			if (log_level == SYSLOG_LEVEL_NOT_SET)
 				error("Invalid log level \"%s\"", optarg);
 			break;
-                case 'd':
-                        rootdir = xmalloc(PATH_MAX);
-                        if (!realpath(optarg, rootdir)) {
-                                error("Invalid rootdir \"%s\"", optarg);
-			        sftp_server_usage();
-                        }
-                        if (chdir(rootdir)) {
-                                error("Could not chdir to rootdir");
-			        sftp_server_usage();
-                        }
-                        break;
+		case 'd':
+			rootdir = xmalloc(PATH_MAX);
+			if (!realpath(optarg, rootdir)) {
+				error("Invalid rootdir \"%s\"", optarg);
+				sftp_server_usage();
+			}
+			if (chdir(rootdir)) {
+				error("Could not chdir to rootdir");
+				sftp_server_usage();
+			}
+			break;
 		case 'f':
 			log_facility = log_facility_number(optarg);
 			if (log_facility == SYSLOG_FACILITY_NOT_SET)
@@ -1607,8 +1607,8 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 
 	logit("session opened for local user %s from [%s]",
 	    pw->pw_name, client_addr);
-        if (rootdir)
-                logit("rootdir set to \"%s\"", rootdir);
+	if (rootdir)
+		logit("rootdir set to \"%s\"", rootdir);
 
 	in = dup(STDIN_FILENO);
 	out = dup(STDOUT_FILENO);
