@@ -7,7 +7,6 @@
 #define HAVE_PATHS_H 1
 #define HAVE_SYS_STATVFS_H
 #define SIZE_T_MAX UINT_MAX
-#define __USE_ISOC99 1
 
 #ifdef FSID_HAS_VAL
 /* encode f_fsid into a 64 bit value  */
