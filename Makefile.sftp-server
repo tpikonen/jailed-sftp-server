@@ -6,14 +6,17 @@ LIBSFTP_OBJS=buffer.o log.o misc.o xmalloc.o fatal.o bufaux.o
 
 OPENBSD_COMPAT_OBJS=openbsd-compat/strmode.o openbsd-compat/strtonum.o openbsd-compat/vis.o openbsd-compat/bsd-misc.o
 
-all: $(BINARY)
+all: $(BINARY) $(BINARY).8
 
 $(BINARY): $(LIBCOMPAT) libsftp.a sftp-common.o sftp-server.o sftp-server-main.o
 	gcc -o $@ sftp-server.o sftp-common.o sftp-server-main.o $(LDFLAGS) -L. -lsftp $(LIBS)
+
+$(BINARY).8: $(BINARY).8.txt
+	a2x -f manpage $<
 
 libsftp.a: $(LIBSFTP_OBJS) $(OPENBSD_COMPAT_OBJS)
 	$(AR) rv $@ $(LIBSFTP_OBJS) $(OPENBSD_COMPAT_OBJS)
 	ranlib $@
 
 clean:
-	-rm *.o *.a openbsd-compat/*.o $(BINARY)
+	-rm *.o *.a openbsd-compat/*.o $(BINARY) $(BINARY).8 $(BINARY).8.xml
