@@ -1,4 +1,10 @@
 BINARY=jailed-sftp-server
+prefix ?= /usr/local
+exec_prefix ?= $(prefix)
+datarootdir ?= $(prefix)/share
+sbindir ?= $(exec_prefix)/sbin
+man8dir ?= $(datarootdir)/man/man8
+
 CFLAGS+= -I.
 LIBS=-lresolv -lcrypto -lutil -lz -lnsl  -lcrypt -lbsd
 
@@ -20,3 +26,7 @@ libsftp.a: $(LIBSFTP_OBJS) $(OPENBSD_COMPAT_OBJS)
 
 clean:
 	-rm *.o *.a openbsd-compat/*.o $(BINARY) $(BINARY).8 $(BINARY).8.xml
+
+install: all
+	install -D --mode=a=rx,u+w $(BINARY) $(DESTDIR)$(sbindir)/$(BINARY)
+	install -D --mode=a=r,u+w $(BINARY).8 $(DESTDIR)$(man8dir)/$(BINARY).8
