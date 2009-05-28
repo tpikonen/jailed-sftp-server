@@ -1,0 +1,15 @@
+Source: jailed-sftp-server
+Section: net
+Priority: extra
+Maintainer: Teemu Ikonen <tpikonen@gmail.com>
+Build-Depends: debhelper (>= 7), libssl-dev, libbsd-dev
+Standards-Version: 3.8.0
+
+Package: jailed-sftp-server
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: SFTP server which confines the client to a subdirectory
+ A patched version of the OpenSSH sftp-server which adds the command-line
+ option '-d <path>' to deny client access to directories outside
+ the given path. This is useful as a forced command for an ssh key
+ in an authorized_keys(5) file.

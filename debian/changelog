@@ -1,0 +1,5 @@
+jailed-sftp-server (5.1p1+0.1-1) unstable; urgency=low
+
+  * Initial release
+
+ -- Teemu Ikonen <tpikonen@gmail.com>  Thu, 28 May 2009 23:36:30 +0200

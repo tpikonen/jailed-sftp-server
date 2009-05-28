@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+
+MFILE=Makefile.sftp-server
+
+build:
+	dh_testdir
+	$(MAKE) -f $(MFILE)
+
+clean:
+	dh_testdir
+	dh_testroot
+	$(MAKE) -f $(MFILE) clean
+	dh clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_prep
+	dh_installdirs
+	$(MAKE) -f $(MFILE) prefix=/usr DESTDIR=$(CURDIR)/debian/jailed-sftp-server install
+	dh install
+
+
+binary-indep: install
+
+binary-arch: install
+	dh binary-arch
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure
