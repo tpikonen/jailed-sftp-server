@@ -2,7 +2,7 @@ Source: jailed-sftp-server
 Section: net
 Priority: extra
 Maintainer: Teemu Ikonen <tpikonen@gmail.com>
-Build-Depends: debhelper (>= 7), libssl-dev, libbsd-dev, asciidoc
+Build-Depends: debhelper (>= 7), libssl-dev, libbsd-dev
 Standards-Version: 3.8.0
 
 Package: jailed-sftp-server
