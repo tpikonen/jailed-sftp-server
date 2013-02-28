@@ -4,6 +4,7 @@ Priority: extra
 Maintainer: Teemu Ikonen <tpikonen@gmail.com>
 Build-Depends: debhelper (>= 7), libssl-dev, libbsd-dev
 Standards-Version: 3.8.0
+Homepage: https://gitorious.org/jsftp-server
 
 Package: jailed-sftp-server
 Architecture: any
