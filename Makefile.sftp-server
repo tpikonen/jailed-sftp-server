@@ -25,7 +25,7 @@ libsftp.a: $(LIBSFTP_OBJS) $(OPENBSD_COMPAT_OBJS)
 	ranlib $@
 
 clean:
-	-rm *.o *.a openbsd-compat/*.o $(BINARY) $(BINARY).8 $(BINARY).8.xml
+	-rm *.o *.a openbsd-compat/*.o $(BINARY)
 
 install: all
 	install -D --mode=a=rx,u+w $(BINARY) $(DESTDIR)$(sbindir)/$(BINARY)
