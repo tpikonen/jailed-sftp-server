@@ -15,7 +15,7 @@ OPENBSD_COMPAT_OBJS=openbsd-compat/strmode.o openbsd-compat/strtonum.o openbsd-c
 all: $(BINARY) $(BINARY).8
 
 $(BINARY): $(LIBCOMPAT) libsftp.a sftp-common.o sftp-server.o sftp-server-main.o
-	gcc -o $@ sftp-server.o sftp-common.o sftp-server-main.o $(LDFLAGS) -L. -lsftp $(LIBS)
+	gcc -o $@ sftp-server.o sftp-common.o sftp-server-main.o -L. -lsftp $(LIBS) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
 
 $(BINARY).8: $(BINARY).8.txt
 	a2x -f manpage $<
