@@ -3,24 +3,19 @@
 MFILE=Makefile.sftp-server
 export prefix=/usr
 
-build:
+override_dh_testdir:
 	dh_testdir
-	$(MAKE) -f $(MFILE)
+	[ -L Makefile ] || ln -s $(MFILE) Makefile
+
+build:
+	dh build
 
 clean:
-	dh_testdir
-	dh_testroot
-	$(MAKE) -f $(MFILE) clean
 	dh clean
+	[ -L Makefile ] && rm -f Makefile || true
 
 install: build
-	dh_testdir
-	dh_testroot
-	dh_prep
-	dh_installdirs
-	$(MAKE) -f $(MFILE) prefix=/usr DESTDIR=$(CURDIR)/debian/jailed-sftp-server install
 	dh install
-
 
 binary-indep: install
 
