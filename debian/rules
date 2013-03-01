@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 MFILE=Makefile.sftp-server
+export prefix=/usr
 
 build:
 	dh_testdir
